@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const DiscoverRecipes = () => {
@@ -49,7 +49,13 @@ const DiscoverRecipes = () => {
         params.append('cookingTime', filters.maxCookingTime);
       }
 
-      const response = await api.get(`/recipes/ai-search?${params.toString()}`);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/recipes/ai-search?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       console.log('✨ AI Search Response:', response.data);
       setRecipes(response.data.recipes || []);

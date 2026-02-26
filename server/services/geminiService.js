@@ -519,10 +519,9 @@ JSON:`;
                 };
             }));
 
-            // Returning clean objects with custom string IDs for immediate frontend use
+            // Returning clean objects to be persisted by the controller
             return recipesWithImages.map(recipe => ({
                 ...recipe,
-                _id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 source: 'ai',
                 isAIGenerated: true
             }));

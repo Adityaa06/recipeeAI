@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
     enum: ['italian', 'chinese', 'indian', 'mexican', 'japanese', 'thai', 'mediterranean', 'american', 'french', 'korean', 'other']
   }],
   savedRecipes: [{
-    type: mongoose.Schema.Types.Mixed,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Recipe'
   }],
   createdAt: {
