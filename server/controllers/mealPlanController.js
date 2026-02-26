@@ -300,8 +300,9 @@ export const addToPersonalMealPlan = async (req, res) => {
             });
         }
 
-        // Validation for ObjectId
-        if (!mongoose.Types.ObjectId.isValid(recipeId)) {
+        // Validation for ObjectId or AI string ID
+        const isValidId = mongoose.Types.ObjectId.isValid(recipeId) || recipeId.startsWith('ai-');
+        if (!isValidId) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid recipe ID format'

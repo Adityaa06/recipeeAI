@@ -186,8 +186,9 @@ export const getRecipeById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Validation for ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        // Validation for ObjectId or AI string ID
+        const isValidId = mongoose.Types.ObjectId.isValid(id) || id.startsWith('ai-');
+        if (!isValidId) {
             return res.status(404).json({
                 success: false,
                 message: 'Invalid recipe ID format'
@@ -442,8 +443,9 @@ export const toggleSaveRecipe = async (req, res) => {
         const user = await User.findById(req.userId);
         const recipeId = req.params.id;
 
-        // Validation for ObjectId
-        if (!mongoose.Types.ObjectId.isValid(recipeId)) {
+        // Validation for ObjectId or AI string ID
+        const isValidId = mongoose.Types.ObjectId.isValid(recipeId) || recipeId.startsWith('ai-');
+        if (!isValidId) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid recipe ID'

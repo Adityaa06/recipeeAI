@@ -7,19 +7,19 @@ const mealSchema = new mongoose.Schema({
         enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     },
     breakfast: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'Recipe'
     },
     lunch: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'Recipe'
     },
     dinner: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'Recipe'
     },
     snacks: [{
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'Recipe'
     }]
 }, { _id: false });

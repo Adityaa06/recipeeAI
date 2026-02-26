@@ -17,6 +17,10 @@ const ingredientSchema = new mongoose.Schema({
 }, { _id: false });
 
 const recipeSchema = new mongoose.Schema({
+    _id: {
+        type: mongoose.Schema.Types.Mixed,
+        default: () => new mongoose.Types.ObjectId()
+    },
     title: {
         type: String,
         required: [true, 'Recipe title is required'],
