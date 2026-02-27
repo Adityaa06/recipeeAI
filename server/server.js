@@ -7,7 +7,13 @@ import recipeRoutes from './routes/recipes.js';
 import mealPlanRoutes from './routes/mealPlans.js';
 import shoppingListRoutes from './routes/shoppingLists.js';
 import aiRoutes from './routes/ai.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+
+// ES Module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +53,20 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Serve static files from React app in production
+if (process.env.NODE_ENV === 'production') {
+    const clientBuildPath = path.join(__dirname, '../client/dist');
+    app.use(express.static(clientBuildPath));
+
+    app.get('*', (req, res, next) => {
+        // If the request is for an API route, let it fall through to 404 handler
+        if (req.path.startsWith('/api')) {
+            return next();
+        }
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
+    });
+}
+
 // 404 handler
 app.use(notFound);
 
@@ -76,8 +96,8 @@ const connectDB = async () => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
-// Start server only in development
-if (process.env.NODE_ENV !== 'production') {
+// Start server only in development or if on Render
+if (process.env.NODE_ENV !== 'production' || process.env.RENDER) {
     const startServer = async () => {
         try {
             await connectDB();
