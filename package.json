@@ -1,0 +1,12 @@
+{
+    "name": "recipe-meal-planner",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "client-install": "npm install --prefix client",
+        "server-install": "npm install --prefix server",
+        "install-all": "npm run client-install && npm run server-install",
+        "client-build": "npm run build --prefix client",
+        "build": "npm run client-build"
+    }
+}

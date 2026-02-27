@@ -54,34 +54,49 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Database connection
+let isConnected = false;
 const connectDB = async () => {
+    if (isConnected) {
+        console.log('Using existing MongoDB connection');
+        return;
+    }
+
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI);
+        const conn = await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
+        isConnected = !!conn.connections[0].readyState;
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error connecting to MongoDB: ${error.message}`);
-        process.exit(1);
+        if (process.env.NODE_ENV !== 'production') {
+            process.exit(1);
+        }
     }
 };
 
 // Start server
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-    try {
-        await connectDB();
+// Start server only in development
+if (process.env.NODE_ENV !== 'production') {
+    const startServer = async () => {
+        try {
+            await connectDB();
 
-        app.listen(PORT, () => {
-            console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-            console.log(`API available at http://localhost:${PORT}/api`);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
-};
+            app.listen(PORT, () => {
+                console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+                console.log(`API available at http://localhost:${PORT}/api`);
+            });
+        } catch (error) {
+            console.error('Failed to start server:', error);
+            process.exit(1);
+        }
+    };
 
-startServer();
+    startServer();
+} else {
+    // In production (Vercel), we just need to export the app and ensure DB is connected
+    connectDB();
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
