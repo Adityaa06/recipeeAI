@@ -63,6 +63,14 @@ const Navbar = () => {
                                 >
                                     Shopping List
                                 </NavLink>
+                                <NavLink
+                                    to="/saved-recipes"
+                                    className={({ isActive }) =>
+                                        `font-medium transition ${isActive ? 'text-primary-600' : 'text-gray-700 hover:text-primary-600'}`
+                                    }
+                                >
+                                    Saved Recipes
+                                </NavLink>
                             </>
                         )}
                     </div>
@@ -160,6 +168,9 @@ const Navbar = () => {
                                                 <NavLink to="/shopping-list" className={({ isActive }) => `flex items-center space-x-3 p-3 rounded-lg font-medium transition ${isActive ? 'bg-primary-50 text-primary-600' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => setIsMenuOpen(false)}>
                                                     <span>Shopping List</span>
                                                 </NavLink>
+                                                <NavLink to="/saved-recipes" className={({ isActive }) => `flex items-center space-x-3 p-3 rounded-lg font-medium transition ${isActive ? 'bg-primary-50 text-primary-600' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => setIsMenuOpen(false)}>
+                                                    <span>Saved Recipes</span>
+                                                </NavLink>
                                                 <NavLink to="/profile" className={({ isActive }) => `flex items-center space-x-3 p-3 rounded-lg font-medium transition ${isActive ? 'bg-primary-50 text-primary-600' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => setIsMenuOpen(false)}>
                                                     <span>My Profile</span>
                                                 </NavLink>
@@ -190,7 +201,7 @@ const Navbar = () => {
                     </div>
                 </div>
             </div>
-        </nav>
+        </nav >
     );
 };
 

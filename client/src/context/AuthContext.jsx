@@ -92,6 +92,42 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const forgotPassword = async (email, captchaToken) => {
+        try {
+            const response = await authService.forgotPassword(email, captchaToken);
+            return { success: true, message: response.message };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || 'Failed to process request'
+            };
+        }
+    };
+
+    const verifyResetOTP = async (email, otp) => {
+        try {
+            const response = await authService.verifyResetOTP(email, otp);
+            return { success: true, message: response.message };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || 'Verification failed'
+            };
+        }
+    };
+
+    const resetPassword = async (email, otp, password) => {
+        try {
+            const response = await authService.resetPassword(email, otp, password);
+            return { success: true, message: response.message };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || 'Password reset failed'
+            };
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -101,6 +137,9 @@ export const AuthProvider = ({ children }) => {
         updateUser,
         sendOTP,
         verifyOTP,
+        forgotPassword,
+        verifyResetOTP,
+        resetPassword,
         isAuthenticated: !!user
     };
 

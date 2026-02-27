@@ -39,7 +39,7 @@ export const recipeService = {
 
     // Toggle save recipe
     toggleSaveRecipe: async (id) => {
-        const response = await api.post(`/recipes/${id}/save`);
+        const response = await api.post(`/recipes/toggle-save/${id}`);
         return response.data;
     },
 

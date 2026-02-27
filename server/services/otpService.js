@@ -64,18 +64,23 @@ export const sendOTPEmail = async (email, otp) => {
 
     // If no credentials, log to console and return success for dev
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.log('-----------------------------------------');
-        console.log(`DEV MODE: OTP for ${email} is ${otp}`);
-        console.log('-----------------------------------------');
+        console.log('--- EMAIL DEV MODE ---');
+        console.log(`To: ${email}`);
+        console.log(`OTP: ${otp}`);
+        console.log('----------------------');
         return true;
     }
 
     try {
-        await transporter.sendMail(mailOptions);
+        console.log(`Attempting to send email to ${email}...`);
+        const result = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', result.messageId);
         return true;
     } catch (error) {
-        console.error('Email sending error:', error);
-        throw new Error('Failed to send verification email');
+        console.error('CRITICAL EMAIL ERROR:', error.message);
+        if (error.stack) console.error(error.stack);
+        // We throw a standardized error but we caught it already
+        throw new Error(`SMTP Error: ${error.message}`);
     }
 };
 

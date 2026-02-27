@@ -1,16 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const Profile = () => {
     const { user, updateUser } = useAuth();
-    const [editing, setEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
-        username: user?.username || '',
-        dietaryRestrictions: user?.dietaryRestrictions || [],
-        allergies: user?.allergies || [],
-        cuisinePreferences: user?.cuisinePreferences || []
+        username: '',
+        dietaryRestrictions: [],
+        allergies: '',
+        cuisinePreferences: []
     });
-    const [message, setMessage] = useState({ type: '', text: '' });
+    const [saving, setSaving] = useState(false);
+
+    // Sync form data with user object when not in edit mode
+    useEffect(() => {
+        if (user && !isEditing) {
+            console.log("DEBUG: Syncing data from user object", user);
+            setFormData({
+                username: user.username || '',
+                dietaryRestrictions: user.dietaryRestrictions || [],
+                allergies: user.allergies?.join(', ') || '',
+                cuisinePreferences: user.cuisinePreferences || []
+            });
+        }
+    }, [user, isEditing]);
 
     const dietaryOptions = [
         'vegan', 'vegetarian', 'gluten-free', 'dairy-free',
@@ -34,29 +48,55 @@ const Profile = () => {
         }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleEditClick = (e) => {
+        // Explicitly prevent default to avoid any form submission
         e.preventDefault();
-        const result = await updateUser(formData);
-
-        if (result.success) {
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
-            setEditing(false);
-        } else {
-            setMessage({ type: 'error', text: result.error });
-        }
-
-        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+        console.log("DEBUG: Edit Profile button clicked - Enabling edit mode");
+        setIsEditing(true);
     };
 
-    const handleCancel = () => {
-        setFormData({
-            username: user?.username || '',
-            dietaryRestrictions: user?.dietaryRestrictions || [],
-            allergies: user?.allergies || [],
-            cuisinePreferences: user?.cuisinePreferences || []
-        });
-        setEditing(false);
-        setMessage({ type: '', text: '' });
+    const handleCancelClick = (e) => {
+        e.preventDefault();
+        console.log("DEBUG: Cancel button clicked - Reverting changes");
+        if (user) {
+            setFormData({
+                username: user.username || '',
+                dietaryRestrictions: user.dietaryRestrictions || [],
+                allergies: user.allergies?.join(', ') || '',
+                cuisinePreferences: user.cuisinePreferences || []
+            });
+        }
+        setIsEditing(false);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log("DEBUG: Form submit triggered");
+
+        // CRITICAL: Double-check that we are actually in editing mode before calling API
+        if (!isEditing) {
+            console.log("DEBUG: API call blocked - Form submitted while NOT in edit mode");
+            return;
+        }
+
+        console.log("DEBUG: API call started - Save Changes clicked");
+        setSaving(true);
+        try {
+            const result = await updateUser(formData);
+            console.log("DEBUG: API call finished", result);
+
+            if (result.success) {
+                toast.success('Profile updated successfully ✅');
+                setIsEditing(false);
+            } else {
+                toast.error(result.error || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error("DEBUG: Update error", error);
+            toast.error('An unexpected error occurred');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -72,16 +112,7 @@ const Profile = () => {
                 </div>
 
                 <div className="card p-4 sm:p-8">
-                    {message.text && (
-                        <div className={`mb-6 p-4 rounded-lg ${message.type === 'success'
-                            ? 'bg-green-50 border border-green-200 text-green-700'
-                            : 'bg-red-50 border border-red-200 text-red-700'
-                            }`}>
-                            {message.text}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} id="profile-form">
                         {/* Account Info */}
                         <div className="border-b border-gray-200 pb-6 mb-6">
                             <h3 className="font-semibold text-lg mb-4">Account Information</h3>
@@ -104,8 +135,8 @@ const Profile = () => {
                                         type="text"
                                         value={formData.username}
                                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                        disabled={!editing}
-                                        className={`input ${!editing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                        disabled={!isEditing}
+                                        className={`input ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     />
                                 </div>
                             </div>
@@ -122,7 +153,7 @@ const Profile = () => {
                                             value={option}
                                             checked={formData.dietaryRestrictions.includes(option)}
                                             onChange={(e) => handleCheckboxChange(e, 'dietaryRestrictions')}
-                                            disabled={!editing}
+                                            disabled={!isEditing}
                                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
                                         />
                                         <span className="text-sm text-gray-700 capitalize">{option}</span>
@@ -136,14 +167,14 @@ const Profile = () => {
                             <h3 className="font-semibold text-lg mb-4">Allergies</h3>
                             <input
                                 type="text"
-                                value={formData.allergies.join(', ')}
+                                value={formData.allergies}
                                 onChange={(e) => setFormData({
                                     ...formData,
-                                    allergies: e.target.value.split(',').map(a => a.trim()).filter(Boolean)
+                                    allergies: e.target.value
                                 })}
-                                disabled={!editing}
+                                disabled={!isEditing}
                                 placeholder="e.g., peanuts, shellfish"
-                                className={`input ${!editing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                className={`input ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                             />
                         </div>
 
@@ -158,7 +189,7 @@ const Profile = () => {
                                             value={option}
                                             checked={formData.cuisinePreferences.includes(option)}
                                             onChange={(e) => handleCheckboxChange(e, 'cuisinePreferences')}
-                                            disabled={!editing}
+                                            disabled={!isEditing}
                                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
                                         />
                                         <span className="text-sm text-gray-700 capitalize">{option}</span>
@@ -169,17 +200,33 @@ const Profile = () => {
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-4">
-                            {editing ? (
+                            {isEditing ? (
                                 <>
-                                    <button type="submit" className="btn btn-primary w-full sm:w-auto">
-                                        Save Changes
+                                    <button
+                                        type="submit"
+                                        disabled={saving}
+                                        className="btn btn-primary bg-green-600 hover:bg-green-700 border-green-600 w-full sm:w-auto flex items-center justify-center gap-2"
+                                    >
+                                        {saving ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : '✅'}
+                                        <span>Save Changes</span>
                                     </button>
-                                    <button type="button" onClick={handleCancel} className="btn btn-secondary w-full sm:w-auto">
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelClick}
+                                        disabled={saving}
+                                        className="btn btn-secondary w-full sm:w-auto"
+                                    >
                                         Cancel
                                     </button>
                                 </>
                             ) : (
-                                <button type="button" onClick={() => setEditing(true)} className="btn btn-primary w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={handleEditClick}
+                                    className="btn btn-primary w-full sm:w-auto"
+                                >
                                     Edit Profile
                                 </button>
                             )}

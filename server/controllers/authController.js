@@ -345,14 +345,19 @@ export const updateProfile = async (req, res) => {
         const { username, dietaryRestrictions, allergies, cuisinePreferences } = req.body;
 
         const updateData = {};
-        if (username) updateData.username = username;
-        if (dietaryRestrictions) updateData.dietaryRestrictions = dietaryRestrictions;
-        if (allergies) updateData.allergies = allergies;
-        if (cuisinePreferences) updateData.cuisinePreferences = cuisinePreferences;
+        if (username !== undefined) updateData.username = username;
+        if (dietaryRestrictions !== undefined) updateData.dietaryRestrictions = dietaryRestrictions;
+        if (allergies !== undefined) {
+            // Support both string (request format) and array (existing format)
+            updateData.allergies = Array.isArray(allergies)
+                ? allergies
+                : allergies.split(',').map(a => a.trim()).filter(Boolean);
+        }
+        if (cuisinePreferences !== undefined) updateData.cuisinePreferences = cuisinePreferences;
 
         const user = await User.findByIdAndUpdate(
             req.userId,
-            updateData,
+            { $set: updateData },
             { new: true, runValidators: true }
         );
 
@@ -381,6 +386,206 @@ export const updateProfile = async (req, res) => {
             success: false,
             message: 'Error updating profile',
             error: error.message
+        });
+    }
+};
+
+/**
+ * Forgot Password - Send OTP
+ * POST /api/auth/forgot-password
+ */
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email, captchaToken } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        // reCAPTCHA verification logic
+        let isVerified = false;
+
+        if (process.env.NODE_ENV === 'development') {
+            isVerified = true;
+        } else if (captchaToken) {
+            const recaptchaSecret = process.env.RECAPTCHA_SECRET;
+            try {
+                const recaptchaRes = await axios.post(
+                    `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`
+                );
+                isVerified = recaptchaRes.data.success;
+            } catch (err) {
+                console.error('reCAPTCHA verification error:', err.message);
+                if (process.env.NODE_ENV === 'development') isVerified = true;
+            }
+        }
+
+        if (!isVerified) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please verify that you are not a robot.'
+            });
+        }
+
+        // Generate OTP and update User directly (bypasses full document validation)
+        const otp = generateOTP();
+        const otpHash = await hashOTP(otp);
+        const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        const user = await User.findOneAndUpdate(
+            { email },
+            {
+                $set: {
+                    resetOTP: otpHash,
+                    resetOTPExpiry: expiry
+                }
+            },
+            { new: true }
+        );
+
+        if (user) {
+            try {
+                await sendOTPEmail(email, otp);
+                console.log(`Reset OTP generated for ${email}`);
+            } catch (emailErr) {
+                console.error('Email delivery failed:', emailErr.message);
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'If an account exists with this email, a reset code has been sent. ✅'
+        });
+    } catch (error) {
+        console.error('Forgot password error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Unable to send OTP. Please try again.'
+        });
+    }
+};
+
+/**
+ * Verify Reset OTP
+ * POST /api/auth/verify-reset-otp
+ */
+export const verifyResetOTP = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email and verification code are required'
+            });
+        }
+
+        const user = await User.findOne({ email }).select('+resetOTP +resetOTPExpiry');
+
+        if (!user || !user.resetOTP || !user.resetOTPExpiry) {
+            return res.status(400).json({
+                success: false,
+                message: 'Verification code expired or not found'
+            });
+        }
+
+        if (new Date() > user.resetOTPExpiry) {
+            return res.status(400).json({
+                success: false,
+                message: 'Verification code expired. Please request a new one.'
+            });
+        }
+
+        const isValid = await checkOTP(otp, user.resetOTP);
+
+        if (!isValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid verification code'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Verification code verified successfully'
+        });
+    } catch (error) {
+        console.error('Verify reset OTP error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error verifying code'
+        });
+    }
+};
+
+/**
+ * Reset Password
+ * POST /api/auth/reset-password
+ */
+export const resetPassword = async (req, res) => {
+    try {
+        const { email, otp, password } = req.body;
+
+        if (!email || !otp || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required'
+            });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long'
+            });
+        }
+
+        const user = await User.findOne({ email }).select('+resetOTP +resetOTPExpiry');
+
+        if (!user || !user.resetOTP || !user.resetOTPExpiry) {
+            return res.status(400).json({
+                success: false,
+                message: 'Reset session expired. Please try again.'
+            });
+        }
+
+        if (new Date() > user.resetOTPExpiry) {
+            await User.updateOne({ _id: user._id }, { $unset: { resetOTP: 1, resetOTPExpiry: 1 } });
+            return res.status(400).json({
+                success: false,
+                message: 'Reset session expired. Please try again.'
+            });
+        }
+
+        const isValid = await checkOTP(otp, user.resetOTP);
+        if (!isValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid verification code'
+            });
+        }
+
+        // Update password (pre-save middleware will hash it)
+        user.password = password;
+
+        // Clear OTP fields
+        user.resetOTP = undefined;
+        user.resetOTPExpiry = undefined;
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset successfully! Please login.'
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error resetting password'
         });
     }
 };

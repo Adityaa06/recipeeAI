@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 const RecipeCard = ({ recipe }) => {
     const { user } = useAuth();
     const [imageLoaded, setImageLoaded] = useState(false);
-    const [isSaved, setIsSaved] = useState(user?.savedRecipes?.includes(recipe._id) || false);
+    const [isSaved, setIsSaved] = useState(user?.savedRecipes?.includes(recipe._id.toString()) || false);
     const [saving, setSaving] = useState(false);
     const defaultImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
 
@@ -23,10 +23,12 @@ const RecipeCard = ({ recipe }) => {
         setSaving(true);
         try {
             const data = await recipeService.toggleSaveRecipe(recipe._id);
-            setIsSaved(data.isSaved);
-            toast.success(data.message);
+            setIsSaved(data.saved);
+            toast.success(data.message, {
+                icon: data.saved ? '❤️' : '🗑️'
+            });
         } catch (error) {
-            toast.error('Failed to save recipe');
+            toast.error('Failed to update favorites');
         } finally {
             setSaving(false);
         }
@@ -80,12 +82,18 @@ const RecipeCard = ({ recipe }) => {
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className={`p-2 rounded-full shadow-lg transition-all duration-300 ${isSaved
-                                ? 'bg-red-500 text-white'
-                                : 'bg-white/90 text-gray-400 hover:text-red-500 backdrop-blur-sm'
+                            className={`p-2 rounded-full shadow-lg transition-all duration-300 transform active:scale-95 ${isSaved
+                                ? 'bg-red-500 text-white hover:bg-red-600'
+                                : 'bg-white/90 text-gray-400 hover:text-red-500 hover:bg-white backdrop-blur-sm'
                                 }`}
+                            title={isSaved ? "Remove from Saved" : "Save Recipe"}
                         >
-                            <svg className={`w-5 h-5 ${isSaved ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
+                            <svg
+                                className={`w-5 h-5 transition-colors duration-300 ${isSaved ? 'fill-current' : 'fill-none'}`}
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
                         </button>

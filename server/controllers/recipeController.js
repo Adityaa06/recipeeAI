@@ -442,14 +442,6 @@ export const toggleSaveRecipe = async (req, res) => {
         const user = await User.findById(req.userId);
         const recipeId = req.params.id;
 
-        // Validation for ObjectId
-        if (!mongoose.Types.ObjectId.isValid(recipeId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid recipe ID'
-            });
-        }
-
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -465,8 +457,8 @@ export const toggleSaveRecipe = async (req, res) => {
             await user.save();
             res.status(200).json({
                 success: true,
-                message: 'Recipe removed from saved collection',
-                isSaved: false
+                message: 'Removed from favorites',
+                saved: false
             });
         } else {
             // Save
@@ -474,8 +466,8 @@ export const toggleSaveRecipe = async (req, res) => {
             await user.save();
             res.status(200).json({
                 success: true,
-                message: 'Recipe saved to collection',
-                isSaved: true
+                message: 'Saved to favorites ❤️',
+                saved: true
             });
         }
     } catch (error) {
@@ -494,10 +486,7 @@ export const toggleSaveRecipe = async (req, res) => {
  */
 export const getSavedRecipes = async (req, res) => {
     try {
-        const user = await User.findById(req.userId).populate({
-            path: 'savedRecipes',
-            populate: { path: 'createdBy', select: 'username' }
-        });
+        const user = await User.findById(req.userId);
 
         if (!user) {
             return res.status(404).json({
@@ -506,10 +495,22 @@ export const getSavedRecipes = async (req, res) => {
             });
         }
 
+        // Fetch recipes based on saved IDs
+        // Support both ObjectIds and potential string IDs from future integrations
+        const objectIds = user.savedRecipes.filter(id => mongoose.Types.ObjectId.isValid(id));
+        const stringIds = user.savedRecipes.filter(id => !mongoose.Types.ObjectId.isValid(id));
+
+        const recipes = await Recipe.find({
+            _id: { $in: objectIds }
+        }).populate('createdBy', 'username');
+
+        // Note: If we had a separate storage for AI recipes not in the DB, we would fetch them here by stringIds.
+        // For now, searchRecipes already persists AI recipes to the DB, so they should all be in the Recipe collection.
+
         res.status(200).json({
             success: true,
-            count: user.savedRecipes.length,
-            recipes: user.savedRecipes
+            count: recipes.length,
+            recipes: recipes
         });
     } catch (error) {
         console.error('Get saved recipes error:', error);

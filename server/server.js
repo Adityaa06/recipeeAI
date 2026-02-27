@@ -85,9 +85,20 @@ startServer();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-    console.log('UNHANDLED REJECTION! 💥 Shutting down...');
-    console.log(err.name, err.message);
-    process.exit(1);
+    console.error('UNHANDLED REJECTION! 💥');
+    console.error('Name:', err.name);
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    // process.exit(1); // Don't exit in dev to allow debugging
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION! 💥');
+    console.error('Name:', err.name);
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    // process.exit(1); // Don't exit in dev to allow debugging
 });
 
 export default app;

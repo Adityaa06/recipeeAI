@@ -27,6 +27,6 @@ router.delete('/:id', authenticateToken, deleteRecipe);
 
 // Saved recipes routes
 router.get('/collection/saved', authenticateToken, getSavedRecipes);
-router.post('/:id/save', authenticateToken, toggleSaveRecipe);
+router.post('/toggle-save/:id', authenticateToken, toggleSaveRecipe);
 
 export default router;

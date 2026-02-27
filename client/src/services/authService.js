@@ -63,5 +63,23 @@ export const authService = {
     // Check if user is authenticated
     isAuthenticated: () => {
         return !!localStorage.getItem('token');
+    },
+
+    // Forgot Password - Send OTP
+    forgotPassword: async (email, captchaToken) => {
+        const response = await api.post('/auth/forgot-password', { email, captchaToken });
+        return response.data;
+    },
+
+    // Verify Reset OTP
+    verifyResetOTP: async (email, otp) => {
+        const response = await api.post('/auth/verify-reset-otp', { email, otp });
+        return response.data;
+    },
+
+    // Reset Password
+    resetPassword: async (email, otp, password) => {
+        const response = await api.post('/auth/reset-password', { email, otp, password });
+        return response.data;
     }
 };

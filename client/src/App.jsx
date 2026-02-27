@@ -15,6 +15,9 @@ import RecipeDetails from './pages/RecipeDetails';
 import MealPlanner from './pages/MealPlanner';
 import ShoppingList from './pages/ShoppingList';
 import Profile from './pages/Profile';
+import SavedRecipes from './pages/SavedRecipes';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
     return (
@@ -28,6 +31,8 @@ function App() {
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/recipes" element={<RecipeSearch />} />
                     <Route path="/recipes/:id" element={<RecipeDetails />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     {/* Protected Routes */}
                     <Route
@@ -51,6 +56,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <ShoppingList />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/saved-recipes"
+                        element={
+                            <ProtectedRoute>
+                                <SavedRecipes />
                             </ProtectedRoute>
                         }
                     />
