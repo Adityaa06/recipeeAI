@@ -13,12 +13,15 @@ import shoppingListRoutes from './routes/shoppingLists.js';
 import aiRoutes from './routes/ai.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
-// Load environment variables as early as possible
-dotenv.config();
-
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables robustly
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+console.log('Starting Server Initialization...');
+
 
 // Initialize Express app
 const app = express();
@@ -113,21 +116,38 @@ const connectDB = async () => {
     }
 
     try {
-        const conn = await mongoose.connect(dbUri);
+        console.log('Attempting to connect to MongoDB Atlas...');
+        const conn = await mongoose.connect(dbUri, {
+            serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of ~30s
+        });
         isConnected = !!conn.connections[0].readyState;
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        console.log(`MongoDB Connected successfully to host: ${conn.connection.host}`);
     } catch (error) {
+        console.error('=============== MONGODB CONNECTION ERROR ===============');
         console.error(`Error connecting to MongoDB: ${error.message}`);
-        // In production, we want the process to fail if it can't connect to the DB
+        console.error(error.stack);
+        console.error('========================================================');
+        // In production, let the platform auto-restart if it crashes
         process.exit(1);
     }
+
+    // Auto-reconnect handlers just to be safe
+    mongoose.connection.on('disconnected', () => {
+        console.warn('MongoDB disconnected! Attempting to reconnect...');
+        isConnected = false;
+    });
+
+    mongoose.connection.on('reconnected', () => {
+        console.log('MongoDB reconnected!');
+        isConnected = true;
+    });
 };
 
 // Start server
 const PORT = process.env.PORT || 5000;
 
-// Start server only in development or if on Render
-if (process.env.NODE_ENV !== 'production' || process.env.RENDER) {
+// Start server only in development or if on Render/Production
+if (process.env.NODE_ENV !== 'production' || process.env.RENDER || process.env.NODE_ENV === 'production') {
     const startServer = async () => {
         try {
             await connectDB();
@@ -144,8 +164,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RENDER) {
 
     startServer();
 } else {
-    // In production (Vercel), we just need to export the app and ensure DB is connected
-    connectDB();
+    // In production (Vercel Serverless environment), we just need to export the app and ensure DB is connected
+    connectDB().catch(console.error);
 }
 
 // Handle unhandled promise rejections
