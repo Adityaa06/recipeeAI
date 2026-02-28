@@ -11,21 +11,21 @@ export const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Configure transporter once to avoid overhead
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
 /**
  * Send OTP via email
  */
 export const sendOTPEmail = async (email, otp) => {
+    // Configure transporter inside to ensure env vars are loaded (ESM hoisting issue)
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
     // For development, if no SMTP credentials, we can use ethereal email
     // Or just log it to console for now if you prefer. 
     // I'll set up a transporter that can be configured via env.
