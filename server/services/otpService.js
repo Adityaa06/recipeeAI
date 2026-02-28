@@ -11,6 +11,17 @@ export const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Configure transporter once to avoid overhead
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 /**
  * Send OTP via email
  */
@@ -18,26 +29,6 @@ export const sendOTPEmail = async (email, otp) => {
     // For development, if no SMTP credentials, we can use ethereal email
     // Or just log it to console for now if you prefer. 
     // I'll set up a transporter that can be configured via env.
-
-    // Real Email Sending Setup
-    // Use Nodemailer with Gmail SMTP to send OTP emails.
-    // Configure using environment variables: EMAIL_USER, EMAIL_PASS
-
-    // 👉 INSERT YOUR GMAIL HERE
-    const GMAIL_USER = process.env.EMAIL_USER || '';
-
-    // 👉 INSERT YOUR GMAIL APP PASSWORD HERE
-    const GMAIL_PASS = process.env.EMAIL_PASS || '';
-
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
 
     const mailOptions = {
         from: `"RecipeAI" <${process.env.EMAIL_USER}>`,
@@ -88,7 +79,7 @@ export const sendOTPEmail = async (email, otp) => {
  * Hash OTP
  */
 export const hashOTP = async (otp) => {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(6);
     return await bcrypt.hash(otp, salt);
 };
 

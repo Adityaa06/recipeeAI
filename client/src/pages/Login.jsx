@@ -13,6 +13,17 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    // Pre-warm the backend server on mount
+    useEffect(() => {
+        const pingServer = async () => {
+            try {
+                const api = (await import('../services/api')).default;
+                api.get('/health').catch(() => { });
+            } catch (err) { }
+        };
+        pingServer();
+    }, []);
+
     const handleChange = (e) => {
         setFormData({
             ...formData,

@@ -24,6 +24,19 @@ const Signup = () => {
     const { signup, sendOTP, verifyOTP } = useAuth();
     const navigate = useNavigate();
 
+    // Pre-warm the backend server on mount (wakes up Render/Vercel)
+    useEffect(() => {
+        const pingServer = async () => {
+            try {
+                const api = (await import('../services/api')).default;
+                api.get('/health').catch(() => { }); // Fire and forget
+            } catch (err) {
+                // Ignore silent failure
+            }
+        };
+        pingServer();
+    }, []);
+
     const dietaryOptions = [
         'vegan', 'vegetarian', 'gluten-free', 'dairy-free',
         'keto', 'paleo', 'low-carb', 'halal', 'kosher'

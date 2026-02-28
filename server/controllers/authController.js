@@ -36,10 +36,12 @@ export const sendOTP = async (req, res) => {
             });
         }
 
+        // Parallelize reCAPTCHA verification and User lookup
         const recaptchaSecret = process.env.RECAPTCHA_SECRET;
-        const recaptchaRes = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`
-        );
+        const [recaptchaRes, existingUser] = await Promise.all([
+            axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`),
+            User.findOne({ email })
+        ]);
 
         if (!recaptchaRes.data.success) {
             return res.status(400).json({
@@ -48,8 +50,6 @@ export const sendOTP = async (req, res) => {
             });
         }
 
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
@@ -70,8 +70,8 @@ export const sendOTP = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Send email
-        await sendOTPEmail(email, otp);
+        // Send email in background to prevent UI hanging
+        sendOTPEmail(email, otp).catch(err => console.error('Background OTP email error:', err));
 
         res.status(200).json({
             success: true,
@@ -405,25 +405,16 @@ export const forgotPassword = async (req, res) => {
             });
         }
 
-        // reCAPTCHA verification logic
-        let isVerified = false;
+        // reCAPTCHA verification logic (Parallelize with User lookup if needed)
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET;
+        const [recaptchaRes, user] = await Promise.all([
+            captchaToken
+                ? axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`)
+                : Promise.resolve({ data: { success: process.env.NODE_ENV === 'development' } }),
+            User.findOne({ email })
+        ]);
 
-        if (process.env.NODE_ENV === 'development') {
-            isVerified = true;
-        } else if (captchaToken) {
-            const recaptchaSecret = process.env.RECAPTCHA_SECRET;
-            try {
-                const recaptchaRes = await axios.post(
-                    `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`
-                );
-                isVerified = recaptchaRes.data.success;
-            } catch (err) {
-                console.error('reCAPTCHA verification error:', err.message);
-                if (process.env.NODE_ENV === 'development') isVerified = true;
-            }
-        }
-
-        if (!isVerified) {
+        if (!recaptchaRes.data.success) {
             return res.status(400).json({
                 success: false,
                 message: 'Please verify that you are not a robot.'
@@ -435,7 +426,7 @@ export const forgotPassword = async (req, res) => {
         const otpHash = await hashOTP(otp);
         const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        const user = await User.findOneAndUpdate(
+        const userRecord = await User.findOneAndUpdate(
             { email },
             {
                 $set: {
@@ -446,13 +437,11 @@ export const forgotPassword = async (req, res) => {
             { new: true }
         );
 
-        if (user) {
-            try {
-                await sendOTPEmail(email, otp);
-                console.log(`Reset OTP generated for ${email}`);
-            } catch (emailErr) {
-                console.error('Email delivery failed:', emailErr.message);
-            }
+        if (userRecord) {
+            // Send email in background to prevent UI hanging
+            sendOTPEmail(email, otp)
+                .then(() => console.log(`Reset OTP generated for ${email}`))
+                .catch(emailErr => console.error('Email delivery failed:', emailErr.message));
         }
 
         return res.status(200).json({
