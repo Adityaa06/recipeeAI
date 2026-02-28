@@ -50,8 +50,9 @@ const DiscoverRecipes = () => {
       }
 
       const token = localStorage.getItem('token');
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await axios.get(
-        `http://localhost:5000/api/recipes/ai-search?${params.toString()}`,
+        `${API_BASE}/recipes/ai-search?${params.toString()}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
