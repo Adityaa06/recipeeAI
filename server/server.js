@@ -25,7 +25,10 @@ console.log('--- Server Startup Debug ---');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('PORT:', process.env.PORT);
 console.log('RENDER:', process.env.RENDER);
-console.log('MONGODB_URI present:', !!(process.env.MONGODB_URI || process.env.MONGO_URI));
+console.log('MONGODB_URI present:', !!process.env.MONGODB_URI);
+if (process.env.MONGODB_URI) console.log('MONGODB_URI starts with:', process.env.MONGODB_URI.substring(0, 10));
+console.log('MONGO_URI present:', !!process.env.MONGO_URI);
+if (process.env.MONGO_URI) console.log('MONGO_URI starts with:', process.env.MONGO_URI.substring(0, 10));
 console.log('GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY);
 console.log('---------------------------');
 
@@ -90,14 +93,26 @@ const connectDB = async () => {
     }
 
     try {
-        const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+        let uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+        // On Render/Production, if one URI is localhost but the other isn't, pick the other one
+        if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+            const isLocal = (s) => s && (s.includes('localhost') || s.includes('127.0.0.1'));
+            if (isLocal(process.env.MONGODB_URI) && !isLocal(process.env.MONGO_URI) && process.env.MONGO_URI) {
+                console.log('Production: MONGODB_URI is localhost, switching to MONGO_URI');
+                uri = process.env.MONGO_URI;
+            } else if (isLocal(process.env.MONGO_URI) && !isLocal(process.env.MONGODB_URI) && process.env.MONGODB_URI) {
+                console.log('Production: MONGO_URI is localhost, switching to MONGODB_URI');
+                uri = process.env.MONGODB_URI;
+            }
+        }
 
         if (!uri) {
             console.error('CRITICAL: No MongoDB connection string found in MONGODB_URI or MONGO_URI');
             process.exit(1);
         }
 
-        console.log(`Connecting to MongoDB (URI starts with: ${uri.substring(0, 10)}...)`);
+        console.log(`Connecting to MongoDB (URI starts with: ${uri.substring(0, 15)}...)`);
 
         const conn = await mongoose.connect(uri, {
             serverSelectionTimeoutMS: 5000 // Timeout after 5s
@@ -106,7 +121,8 @@ const connectDB = async () => {
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`CRITICAL: Error connecting to MongoDB: ${error.message}`);
-        process.exit(1); // Exit on DB failure in production
+        console.log('TIP: If on Render, ensure you have whitelisted "0.0.0.0/0" in your MongoDB Atlas Network Access settings.');
+        process.exit(1);
     }
 };
 
