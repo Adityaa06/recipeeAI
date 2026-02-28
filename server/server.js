@@ -91,7 +91,14 @@ const connectDB = async () => {
 
     try {
         const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
-        console.log('Attempting to connect to MongoDB...');
+
+        if (!uri) {
+            console.error('CRITICAL: No MongoDB connection string found in MONGODB_URI or MONGO_URI');
+            process.exit(1);
+        }
+
+        console.log(`Connecting to MongoDB (URI starts with: ${uri.substring(0, 10)}...)`);
+
         const conn = await mongoose.connect(uri, {
             serverSelectionTimeoutMS: 5000 // Timeout after 5s
         });
@@ -99,9 +106,7 @@ const connectDB = async () => {
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`CRITICAL: Error connecting to MongoDB: ${error.message}`);
-        if (process.env.NODE_ENV !== 'production') {
-            process.exit(1);
-        }
+        process.exit(1); // Exit on DB failure in production
     }
 };
 

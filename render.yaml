@@ -4,13 +4,15 @@ services:
     runtime: node
     plan: free
     buildCommand: npm run build
-    startCommand: npm start
+    startCommand: node server/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        value: "mongodb+srv://Aditya:%402005%23AdiTYa@cluster0.nxedwck.mongodb.net/recipe-meal-planner"
+        sync: false
+      - key: MONGO_URI
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: RENDER
