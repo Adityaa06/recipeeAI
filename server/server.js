@@ -21,8 +21,6 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
-console.log('--- Server Starting in Production Mode ---');
-
 // Middleware
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -84,36 +82,14 @@ const connectDB = async () => {
     }
 
     try {
-        let uri = process.env.MONGODB_URI || process.env.MONGO_URI;
-
-        // On Render/Production, if one URI is localhost but the other isn't, pick the other one
-        if (process.env.RENDER || process.env.NODE_ENV === 'production') {
-            const isLocal = (s) => s && (s.includes('localhost') || s.includes('127.0.0.1'));
-            if (isLocal(process.env.MONGODB_URI) && !isLocal(process.env.MONGO_URI) && process.env.MONGO_URI) {
-                console.log('Production: MONGODB_URI is localhost, switching to MONGO_URI');
-                uri = process.env.MONGO_URI;
-            } else if (isLocal(process.env.MONGO_URI) && !isLocal(process.env.MONGODB_URI) && process.env.MONGODB_URI) {
-                console.log('Production: MONGO_URI is localhost, switching to MONGODB_URI');
-                uri = process.env.MONGODB_URI;
-            }
-        }
-
-        if (!uri) {
-            console.error('CRITICAL: No MongoDB connection string found in MONGODB_URI or MONGO_URI');
-            process.exit(1);
-        }
-
-        console.log(`Connecting to MongoDB (URI starts with: ${uri.substring(0, 15)}...)`);
-
-        const conn = await mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 5000 // Timeout after 5s
-        });
+        const conn = await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
         isConnected = !!conn.connections[0].readyState;
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error(`CRITICAL: Error connecting to MongoDB: ${error.message}`);
-        console.log('TIP: If on Render, ensure you have whitelisted "0.0.0.0/0" in your MongoDB Atlas Network Access settings.');
-        process.exit(1);
+        console.error(`Error connecting to MongoDB: ${error.message}`);
+        if (process.env.NODE_ENV !== 'production') {
+            process.exit(1);
+        }
     }
 };
 
@@ -124,16 +100,14 @@ const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production' || process.env.RENDER) {
     const startServer = async () => {
         try {
-            console.log('Starting DB connection...');
             await connectDB();
 
-            console.log(`Attempting to listen on port ${PORT}...`);
             app.listen(PORT, () => {
                 console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
                 console.log(`API available at http://localhost:${PORT}/api`);
             });
         } catch (error) {
-            console.error('CRITICAL: Failed to start server:', error);
+            console.error('Failed to start server:', error);
             process.exit(1);
         }
     };
