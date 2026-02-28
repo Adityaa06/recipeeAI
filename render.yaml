@@ -5,11 +5,10 @@ services:
     plan: free
     buildCommand: npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: MONGODB_URI
         value: "mongodb+srv://Aditya:%402005%23AdiTYa@cluster0.nxedwck.mongodb.net/recipe-meal-planner"
       - key: JWT_SECRET
@@ -17,4 +16,14 @@ services:
       - key: RENDER
         value: true
       - key: CLIENT_URL
-        value: https://recipe-meal-planner.onrender.com # Change this to your actual Render URL
+        value: https://recipe-meal-planner.onrender.com
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: RECAPTCHA_SECRET
+        sync: false
+      - key: VITE_RECAPTCHA_SITE_KEY
+        value: "6LeKOHYsAAAAABuAxhYuZZ_4e5uYmptmHvBe0XYx"
