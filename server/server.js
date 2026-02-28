@@ -2,32 +2,57 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import recipeRoutes from './routes/recipes.js';
 import mealPlanRoutes from './routes/mealPlans.js';
 import shoppingListRoutes from './routes/shoppingLists.js';
 import aiRoutes from './routes/ai.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+
+// Load environment variables as early as possible
+dotenv.config();
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config();
-
 // Initialize Express app
 const app = express();
 
+// Security Middleware
+app.use(helmet()); // Set security HTTP headers
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many requests from this IP, please try again after 15 minutes'
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiter to all routes
+app.use('/api', limiter);
+
 // Middleware
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.CLIENT_URL
+        : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10kb' })); // Body parser, reading data from body into req.body with limit
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Request logging middleware (development)
 if (process.env.NODE_ENV === 'development') {
@@ -77,19 +102,24 @@ app.use(errorHandler);
 let isConnected = false;
 const connectDB = async () => {
     if (isConnected) {
-        console.log('Using existing MongoDB connection');
         return;
     }
 
+    const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+    if (!dbUri) {
+        console.error('CRITICAL ERROR: MongoDB connection string (MONGODB_URI) is missing in environment variables.');
+        process.exit(1);
+    }
+
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
+        const conn = await mongoose.connect(dbUri);
         isConnected = !!conn.connections[0].readyState;
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error connecting to MongoDB: ${error.message}`);
-        if (process.env.NODE_ENV !== 'production') {
-            process.exit(1);
-        }
+        // In production, we want the process to fail if it can't connect to the DB
+        process.exit(1);
     }
 };
 
