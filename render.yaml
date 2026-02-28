@@ -18,11 +18,11 @@ services:
       - key: RENDER
         value: true
       - key: CLIENT_URL
-        value: https://recipe-meal-planner.onrender.com
+        value: https://recipeeai.onrender.com
       - key: GEMINI_API_KEY
         sync: false
       - key: EMAIL_USER
-        sync: false
+        value: "singhaditya06.04.2005@gmail.com"
       - key: EMAIL_PASS
         sync: false
       - key: RECAPTCHA_SECRET
