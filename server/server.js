@@ -91,19 +91,10 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Serve static files from React app in production
-if (process.env.NODE_ENV === 'production') {
-    const clientBuildPath = path.join(__dirname, '../client/dist');
-    app.use(express.static(clientBuildPath));
-
-    app.get('*', (req, res, next) => {
-        // If the request is for an API route, let it fall through to 404 handler
-        if (req.path.startsWith('/api')) {
-            return next();
-        }
-        res.sendFile(path.join(clientBuildPath, 'index.html'));
-    });
-}
+// Root route for backend health checking from browser
+app.get('/', (req, res) => {
+    res.send('Recipe AI Backend is running. Access API endpoints at /api');
+});
 
 // 404 handler
 app.use(notFound);
