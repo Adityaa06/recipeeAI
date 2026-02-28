@@ -453,7 +453,7 @@ const sampleRecipes = [
 
 async function seedDatabase() {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
+        await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected to MongoDB');
 
         // Create a default user for seeding
