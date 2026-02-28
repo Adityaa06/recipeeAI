@@ -3,10 +3,12 @@ services:
     name: recipeeAI
     runtime: node
     plan: free
-    buildCommand: npm run build
+    buildCommand: "npm install --prefix client && npm install --prefix server && npm run build --prefix client"
     startCommand: node server/server.js
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: 20.10.0
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
