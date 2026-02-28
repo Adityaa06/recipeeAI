@@ -11,20 +11,35 @@ export const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+let transporter;
+
+/**
+ * Get or create nodemailer transporter (singleton)
+ */
+const getTransporter = () => {
+    if (!transporter) {
+        transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            },
+            // Reduce connection timeout
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 15000
+        });
+    }
+    return transporter;
+};
+
 /**
  * Send OTP via email
  */
 export const sendOTPEmail = async (email, otp) => {
-    // Configure transporter inside to ensure env vars are loaded (ESM hoisting issue)
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
+    const mailTransporter = getTransporter();
 
     // For development, if no SMTP credentials, we can use ethereal email
     // Or just log it to console for now if you prefer. 
@@ -64,7 +79,17 @@ export const sendOTPEmail = async (email, otp) => {
 
     try {
         console.log(`Attempting to send email to ${email}...`);
-        const result = await transporter.sendMail(mailOptions);
+
+        // Use a timeout promise to ensure we don't hang the whole server
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email delivery timed out (15s)')), 15000)
+        );
+
+        const result = await Promise.race([
+            mailTransporter.sendMail(mailOptions),
+            timeoutPromise
+        ]);
+
         console.log('Email sent successfully:', result.messageId);
         return true;
     } catch (error) {

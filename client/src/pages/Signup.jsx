@@ -24,12 +24,15 @@ const Signup = () => {
     const { signup, sendOTP, verifyOTP } = useAuth();
     const navigate = useNavigate();
 
+    const [serverAwake, setServerAwake] = useState(false);
+
     // Pre-warm the backend server on mount (wakes up Render/Vercel)
     useEffect(() => {
         const pingServer = async () => {
             try {
                 const api = (await import('../services/api')).default;
-                api.get('/health').catch(() => { }); // Fire and forget
+                await api.get('/health');
+                setServerAwake(true);
             } catch (err) {
                 // Ignore silent failure
             }
@@ -244,7 +247,9 @@ const Signup = () => {
                                 disabled={loading || !captchaToken}
                                 className={`btn btn-primary w-full ${(!captchaToken || loading) ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
-                                {loading ? 'Sending OTP...' : 'Continue'}
+                                {loading
+                                    ? 'Sending OTP...'
+                                    : (!serverAwake ? 'Waking up server...' : 'Continue')}
                             </button>
                         </form>
                     )}

@@ -36,10 +36,9 @@ export const sendOTP = async (req, res) => {
             });
         }
 
-        // Parallelize reCAPTCHA verification and User lookup
         const recaptchaSecret = process.env.RECAPTCHA_SECRET;
         const [recaptchaRes, existingUser] = await Promise.all([
-            axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`),
+            axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`, {}, { timeout: 10000 }),
             User.findOne({ email })
         ]);
 
