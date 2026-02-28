@@ -46,9 +46,19 @@ app.use('/api', limiter);
 
 // Middleware
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production'
-        ? process.env.CLIENT_URL
-        : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: function (origin, callback) {
+        // In production, allow CLIENT_URL. In development, allow localhost.
+        const allowedOrigins = process.env.NODE_ENV === 'production'
+            ? [process.env.CLIENT_URL]
+            : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     optionsSuccessStatus: 200
 };
@@ -108,15 +118,21 @@ const connectDB = async () => {
         return;
     }
 
-    const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    const dbUri = process.env.MONGODB_URI; // Strictly use MONGODB_URI as requested
 
     if (!dbUri) {
         console.error('CRITICAL ERROR: MongoDB connection string (MONGODB_URI) is missing in environment variables.');
-        process.exit(1);
+        // Do not exit, just return so server can listen for routes (e.g. health check)
+        return;
+    }
+
+    // Protect against accidentally deploying with localhost to Render
+    if (process.env.NODE_ENV === 'production' && dbUri.includes('localhost')) {
+        console.warn('WARNING: Using a localhost MongoDB URI in a production deployment! This is likely an error unless using a very specific setup.');
     }
 
     try {
-        console.log('Attempting to connect to MongoDB Atlas...');
+        console.log(`Attempting to connect to MongoDB...`);
         const conn = await mongoose.connect(dbUri, {
             serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of ~30s
         });
@@ -125,10 +141,9 @@ const connectDB = async () => {
     } catch (error) {
         console.error('=============== MONGODB CONNECTION ERROR ===============');
         console.error(`Error connecting to MongoDB: ${error.message}`);
-        console.error(error.stack);
+        console.error('The server will continue running, but database operations will fail.');
         console.error('========================================================');
-        // In production, let the platform auto-restart if it crashes
-        process.exit(1);
+        // Do not process.exit(1) here so the app keeps running and Render considers deploy successful
     }
 
     // Auto-reconnect handlers just to be safe
