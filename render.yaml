@@ -10,7 +10,7 @@ services:
       - key: PORT
         value: 10000
       - key: MONGODB_URI
-        fromContext: mongodb-uri # User will need to provide this
+        value: "mongodb+srv://Aditya:%402005%23AdiTYa@cluster0.nxedwck.mongodb.net/recipe-meal-planner"
       - key: JWT_SECRET
         generateValue: true
       - key: RENDER
