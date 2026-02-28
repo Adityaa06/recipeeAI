@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: recipe-meal-planner
+    runtime: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromContext: mongodb-uri # User will need to provide this
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RENDER
+        value: true
+      - key: CLIENT_URL
+        value: https://recipe-meal-planner.onrender.com # Change this to your actual Render URL
