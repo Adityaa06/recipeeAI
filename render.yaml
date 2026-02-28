@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: recipe-meal-planner
+    name: recipeeAI
     runtime: node
     plan: free
     buildCommand: npm run build
@@ -10,9 +10,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://Aditya:%402005%23AdiTYa@cluster0.nxedwck.mongodb.net/recipe-meal-planner"
       - key: MONGO_URI
-        sync: false
+        value: "mongodb+srv://Aditya:%402005%23AdiTYa@cluster0.nxedwck.mongodb.net/recipe-meal-planner"
       - key: JWT_SECRET
         generateValue: true
       - key: RENDER
