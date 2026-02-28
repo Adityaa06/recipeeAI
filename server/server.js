@@ -21,16 +21,7 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
-console.log('--- Server Startup Debug ---');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT);
-console.log('RENDER:', process.env.RENDER);
-console.log('MONGODB_URI present:', !!process.env.MONGODB_URI);
-if (process.env.MONGODB_URI) console.log('MONGODB_URI starts with:', process.env.MONGODB_URI.substring(0, 10));
-console.log('MONGO_URI present:', !!process.env.MONGO_URI);
-if (process.env.MONGO_URI) console.log('MONGO_URI starts with:', process.env.MONGO_URI.substring(0, 10));
-console.log('GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY);
-console.log('---------------------------');
+console.log('--- Server Starting in Production Mode ---');
 
 // Middleware
 app.use(cors({
