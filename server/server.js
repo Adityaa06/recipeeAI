@@ -118,17 +118,12 @@ const connectDB = async () => {
         return;
     }
 
-    const dbUri = process.env.MONGODB_URI; // Strictly use MONGODB_URI as requested
+    const dbUri = process.env.MONGODB_URI;
 
     if (!dbUri) {
         console.error('CRITICAL ERROR: MongoDB connection string (MONGODB_URI) is missing in environment variables.');
         // Do not exit, just return so server can listen for routes (e.g. health check)
         return;
-    }
-
-    // Protect against accidentally deploying with localhost to Render
-    if (process.env.NODE_ENV === 'production' && dbUri.includes('localhost')) {
-        console.warn('WARNING: Using a localhost MongoDB URI in a production deployment! This is likely an error unless using a very specific setup.');
     }
 
     try {
