@@ -21,6 +21,14 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
+console.log('--- Server Startup Debug ---');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('RENDER:', process.env.RENDER);
+console.log('MONGODB_URI present:', !!(process.env.MONGODB_URI || process.env.MONGO_URI));
+console.log('GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY);
+console.log('---------------------------');
+
 // Middleware
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -82,11 +90,15 @@ const connectDB = async () => {
     }
 
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
+        const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+        console.log('Attempting to connect to MongoDB...');
+        const conn = await mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 5000 // Timeout after 5s
+        });
         isConnected = !!conn.connections[0].readyState;
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error(`Error connecting to MongoDB: ${error.message}`);
+        console.error(`CRITICAL: Error connecting to MongoDB: ${error.message}`);
         if (process.env.NODE_ENV !== 'production') {
             process.exit(1);
         }
@@ -100,14 +112,16 @@ const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production' || process.env.RENDER) {
     const startServer = async () => {
         try {
+            console.log('Starting DB connection...');
             await connectDB();
 
+            console.log(`Attempting to listen on port ${PORT}...`);
             app.listen(PORT, () => {
                 console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
                 console.log(`API available at http://localhost:${PORT}/api`);
             });
         } catch (error) {
-            console.error('Failed to start server:', error);
+            console.error('CRITICAL: Failed to start server:', error);
             process.exit(1);
         }
     };
