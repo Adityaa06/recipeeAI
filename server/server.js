@@ -118,10 +118,10 @@ const connectDB = async () => {
         return;
     }
 
-    const dbUri = process.env.MONGODB_URI;
+    const dbUri = process.env.MONGO_URI;
 
     if (!dbUri) {
-        console.error('CRITICAL ERROR: MongoDB connection string (MONGODB_URI) is missing in environment variables.');
+        console.error('CRITICAL ERROR: MongoDB connection string (MONGO_URI) is missing in environment variables.');
         // Do not exit, just return so server can listen for routes (e.g. health check)
         return;
     }
@@ -129,6 +129,8 @@ const connectDB = async () => {
     try {
         console.log(`Attempting to connect to MongoDB...`);
         const conn = await mongoose.connect(dbUri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of ~30s
         });
         isConnected = !!conn.connections[0].readyState;
