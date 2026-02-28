@@ -60,18 +60,19 @@ export const sendOTP = async (req, res) => {
         const otp = generateOTP();
         const otpHash = await hashOTP(otp);
 
-        // Save OTP to database
-        await OTP.findOneAndUpdate(
-            { email },
-            {
-                otpHash,
-                expiresAt: new Date(Date.now() + 5 * 60 * 1000)
-            },
-            { upsert: true, new: true }
-        );
-
-        // Send email in background to prevent UI hanging
-        sendOTPEmail(email, otp).catch(err => console.error('Background OTP email error:', err));
+        // Save OTP to database and Send email in parallel
+        // We MUST await both to ensure delivery on serverless platforms
+        await Promise.all([
+            OTP.findOneAndUpdate(
+                { email },
+                {
+                    otpHash,
+                    expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+                },
+                { upsert: true, new: true }
+            ),
+            sendOTPEmail(email, otp)
+        ]);
 
         res.status(200).json({
             success: true,
@@ -438,10 +439,9 @@ export const forgotPassword = async (req, res) => {
         );
 
         if (userRecord) {
-            // Send email in background to prevent UI hanging
-            sendOTPEmail(email, otp)
-                .then(() => console.log(`Reset OTP generated for ${email}`))
-                .catch(emailErr => console.error('Email delivery failed:', emailErr.message));
+            // Await email delivery to ensure it doesn't get cancelled on serverless
+            await sendOTPEmail(email, otp);
+            console.log(`Reset OTP generated for ${email}`);
         }
 
         return res.status(200).json({
