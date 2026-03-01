@@ -22,6 +22,11 @@ const getTransporter = () => {
         console.log('--- Initializing Email Transporter ---');
         console.log('EMAIL_USER:', process.env.EMAIL_USER);
         console.log('EMAIL_FROM:', process.env.EMAIL_FROM || process.env.EMAIL_USER);
+        console.log('EMAIL_PASS Status:', process.env.EMAIL_PASS ? 'DEFINED (Masked)' : 'MISSING');
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.error('CRITICAL: EMAIL_USER or EMAIL_PASS environment variables are MISSING!');
+        }
 
         transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
@@ -31,7 +36,7 @@ const getTransporter = () => {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Force IPv4 via custom lookup to bypass IPv6 connectivity issues on Render
+            // Force IPv4 via custom lookup to strictly bypass IPv6 ENETUNREACH on Render
             lookup: (hostname, options, callback) => {
                 dns.lookup(hostname, { family: 4 }, (err, address, family) => {
                     if (err) {
@@ -44,22 +49,37 @@ const getTransporter = () => {
             },
             connectionTimeout: 20000,
             greetingTimeout: 20000,
-            socketTimeout: 30000
+            socketTimeout: 30000,
+            debug: true, // Enable debug logs
+            logger: true // Log to console
         });
 
         // Verify transporter configuration
         transporter.verify((error, success) => {
             if (error) {
-                console.error('--- SMTP TRANSPORTER ERROR ---');
+                console.error('--- SMTP TRANSPORTER VERIFICATION ERROR ---');
                 console.error('Error Code:', error.code);
                 console.error('Error Message:', error.message);
-                console.error('------------------------------');
+                console.error('-------------------------------------------');
             } else {
                 console.log('--- SMTP Transporter Verified Successfully ---');
             }
         });
     }
     return transporter;
+};
+
+/**
+ * Diagnostic function to verify SMTP connectivity
+ */
+export const verifySMTP = async () => {
+    const mailTransporter = getTransporter();
+    try {
+        await mailTransporter.verify();
+        return { success: true, message: 'SMTP connection verified successfully' };
+    } catch (error) {
+        return { success: false, message: error.message, code: error.code };
+    }
 };
 
 /**

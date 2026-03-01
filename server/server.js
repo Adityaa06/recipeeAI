@@ -39,7 +39,7 @@ console.log('Starting Server Initialization...');
 // Initialize Express app
 const app = express();
 
-// Trust proxy - required for express-rate-limit on Render/Vercel
+// Trust proxy MUST be set before any other middleware for proper IP identification on Render/Vercel
 app.set('trust proxy', 1);
 
 // Security Middleware

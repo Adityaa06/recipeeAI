@@ -8,7 +8,8 @@ import {
     verifyOTP,
     forgotPassword,
     verifyResetOTP,
-    resetPassword
+    resetPassword,
+    testSMTP
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/send-otp', sendOTP);
 router.post('/verify-otp', verifyOTP);
+router.get('/test-smtp', testSMTP);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-reset-otp', verifyResetOTP);
 router.post('/reset-password', resetPassword);

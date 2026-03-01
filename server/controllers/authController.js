@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import OTP from '../models/OTP.js';
 import jwt from 'jsonwebtoken';
-import { generateOTP, sendOTPEmail, hashOTP, verifyOTP as checkOTP } from '../services/otpService.js';
+import { generateOTP, sendOTPEmail, hashOTP, verifyOTP as checkOTP, verifySMTP } from '../services/otpService.js';
 import axios from 'axios';
 
 /**
@@ -97,6 +97,38 @@ export const sendOTP = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error sending verification code',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Diagnostic endpoint to test SMTP connectivity
+ * GET /api/auth/test-smtp
+ */
+export const testSMTP = async (req, res) => {
+    try {
+        console.log('[DIAGNOSTIC] Testing SMTP connectivity...');
+        const result = await verifySMTP();
+
+        if (result.success) {
+            return res.status(200).json({
+                success: true,
+                message: 'SMTP Transporter verified and connected successfully! ✅',
+                details: 'The backend can successfully reach Gmail SMTP.'
+            });
+        } else {
+            return res.status(500).json({
+                success: false,
+                message: 'SMTP Verification Failed ❌',
+                error: result.message,
+                code: result.code
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal error during SMTP test',
             error: error.message
         });
     }
