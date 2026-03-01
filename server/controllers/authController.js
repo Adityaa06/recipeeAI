@@ -3,6 +3,7 @@ import OTP from '../models/OTP.js';
 import jwt from 'jsonwebtoken';
 import { generateOTP, sendOTPEmail, hashOTP, verifyOTP as checkOTP, verifySMTP } from '../services/otpService.js';
 import axios from 'axios';
+import net from 'net';
 
 /**
  * Generate JWT token
@@ -108,23 +109,39 @@ export const sendOTP = async (req, res) => {
  */
 export const testSMTP = async (req, res) => {
     try {
-        console.log('[DIAGNOSTIC] Testing SMTP connectivity...');
-        const result = await verifySMTP();
+        console.log('[DIAGNOSTIC] Testing network and SMTP connectivity...');
 
-        if (result.success) {
-            return res.status(200).json({
-                success: true,
-                message: 'SMTP Transporter verified and connected successfully! ✅',
-                details: 'The backend can successfully reach Gmail SMTP.'
+        // 1. Test basic outbound internet (Port 443 to google)
+        const checkNetwork = (host, port) => {
+            return new Promise((resolve) => {
+                const socket = net.createConnection(port, host);
+                socket.setTimeout(10000);
+                socket.on('connect', () => { socket.destroy(); resolve({ success: true }); });
+                socket.on('error', (err) => { resolve({ success: false, error: err.message }); });
+                socket.on('timeout', () => { socket.destroy(); resolve({ success: false, error: 'Timeout' }); });
             });
-        } else {
-            return res.status(500).json({
-                success: false,
-                message: 'SMTP Verification Failed ❌',
-                error: result.message,
-                code: result.code
-            });
-        }
+        };
+
+        const google443 = await checkNetwork('google.com', 443);
+        const gmail465 = await checkNetwork('smtp.gmail.com', 465);
+        const gmail587 = await checkNetwork('smtp.gmail.com', 587);
+
+        const smtpResult = await verifySMTP();
+
+        return res.status(200).json({
+            success: smtpResult.success,
+            message: smtpResult.success ? 'SMTP Connected! ✅' : 'SMTP Failed ❌',
+            diagnostics: {
+                google443,
+                gmail465,
+                gmail587,
+                smtp: {
+                    success: smtpResult.success,
+                    error: smtpResult.message,
+                    code: smtpResult.code
+                }
+            }
+        });
     } catch (error) {
         res.status(500).json({
             success: false,

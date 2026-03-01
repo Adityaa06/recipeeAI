@@ -28,31 +28,19 @@ const getTransporter = () => {
             console.error('CRITICAL: EMAIL_USER or EMAIL_PASS environment variables are MISSING!');
         }
 
-        // We use a well-known IPv4 for smtp.gmail.com to bypass IPv6/DNS issues on Render
-        // 142.251.18.108 is a stable Google SMTP IPv4
-        const smtpHost = '142.251.18.108';
-
         transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: 465,
-            secure: true,
+            service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Strictly enforce IPv4 at the socket level
+            // Force IPv4
             family: 4,
             connectionTimeout: 20000,
             greetingTimeout: 20000,
             socketTimeout: 30000,
             debug: true,
-            logger: true,
-            tls: {
-                // Important: When using IP address instead of hostname, 
-                // we must specify the servername for SNI and certificate verification.
-                servername: 'smtp.gmail.com',
-                rejectUnauthorized: true
-            }
+            logger: true
         });
 
         // Verify transporter configuration
