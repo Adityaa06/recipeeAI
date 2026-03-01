@@ -31,6 +31,7 @@ const getTransporter = () => {
                 pass: process.env.EMAIL_PASS
             },
             // Force node to use IPv4 if possible and increase timeouts for cloud environments
+            family: 4, // Force IPv4
             connectionTimeout: 20000,
             greetingTimeout: 20000,
             socketTimeout: 30000
