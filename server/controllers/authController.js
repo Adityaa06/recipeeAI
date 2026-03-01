@@ -125,6 +125,7 @@ export const testSMTP = async (req, res) => {
         const google443 = await checkNetwork('google.com', 443);
         const gmail465 = await checkNetwork('smtp.gmail.com', 465);
         const gmail587 = await checkNetwork('smtp.gmail.com', 587);
+        const brevo2525 = await checkNetwork('smtp-relay.brevo.com', 2525);
 
         const smtpResult = await verifySMTP();
 
@@ -135,6 +136,7 @@ export const testSMTP = async (req, res) => {
                 google443,
                 gmail465,
                 gmail587,
+                brevo2525,
                 smtp: {
                     success: smtpResult.success,
                     error: smtpResult.message,
