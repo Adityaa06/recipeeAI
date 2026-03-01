@@ -25,15 +25,22 @@ const getTransporter = () => {
 
         transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
-            port: 587,
-            secure: false, // true for 465, false for 587/STARTTLS
+            port: 465,
+            secure: true, // Port 465 uses SSL/TLS from the start
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Force IPv4 via custom lookup to bypass IPv6 ENETUNREACH on cloud providers
+            // Force IPv4 via custom lookup to bypass IPv6 connectivity issues on Render
             lookup: (hostname, options, callback) => {
-                dns.lookup(hostname, { family: 4 }, callback);
+                dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+                    if (err) {
+                        console.error(`[DNS] Lookup failed for ${hostname}:`, err.message);
+                    } else {
+                        console.log(`[DNS] Resolved ${hostname} to ${address} (IPv${family})`);
+                    }
+                    callback(err, address, family);
+                });
             },
             connectionTimeout: 20000,
             greetingTimeout: 20000,
