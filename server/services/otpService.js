@@ -76,16 +76,30 @@ export const verifySMTP = async () => {
  * Send OTP via email
  */
 export const sendOTPEmail = async (email, otp) => {
-    // 1. Try Resend API first (Production/Render)
-    if (process.env.RESEND_API_KEY) {
+    // 1. Try Brevo SMTP on Port 2525 (works on Render Free Tier, any recipient!)
+    if (process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS) {
         try {
-            console.log(`[EMAIL] Attempting to send OTP via Resend API to ${email}...`);
-            const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+            console.log(`[EMAIL] Attempting to send OTP via Brevo SMTP to ${email}...`);
+            const brevoTransporter = nodemailer.createTransport({
+                host: 'smtp-relay.brevo.com',
+                port: 2525,
+                secure: false,
+                auth: {
+                    user: process.env.BREVO_SMTP_USER,
+                    pass: process.env.BREVO_SMTP_PASS
+                },
+                family: 4,
+                connectionTimeout: 15000,
+                greetingTimeout: 15000,
+                socketTimeout: 20000
+            });
 
-            const response = await axios.post('https://api.resend.com/emails', {
-                from: `RecipeAI <${fromEmail}>`,
+            const fromEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+            const result = await brevoTransporter.sendMail({
+                from: `"RecipeAI" <${fromEmail}>`,
                 to: email,
                 subject: 'Verify your RecipeAI account',
+                text: `Your verification code is ${otp}. It expires in 5 minutes.`,
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 8px;">
                         <h2 style="color: #10b981; text-align: center;">RecipeAI Verification</h2>
@@ -102,23 +116,15 @@ export const sendOTPEmail = async (email, otp) => {
                         </p>
                     </div>
                 `
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000
             });
 
-            console.log(`[EMAIL] OTP sent via Resend API. ID: ${response.data.id}`);
+            console.log(`[EMAIL] OTP sent via Brevo SMTP. MessageId: ${result.messageId}`);
             return true;
-        } catch (apiError) {
-            console.error('--- RESEND API ERROR ---');
-            console.error('Status:', apiError.response?.status);
-            console.error('Data:', apiError.response?.data);
-            console.error('Message:', apiError.message);
-            // Fall through to SMTP if API fails
-            console.log('[EMAIL] API delivery failed, falling back to SMTP...');
+        } catch (brevoError) {
+            console.error('--- BREVO SMTP ERROR ---');
+            console.error('Error:', brevoError.message);
+            console.error('Code:', brevoError.code);
+            console.log('[EMAIL] Brevo failed, falling back to Gmail SMTP...');
         }
     }
 
