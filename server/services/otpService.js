@@ -30,10 +30,10 @@ const getTransporter = () => {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Reduce connection timeout
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 15000
+            // Force node to use IPv4 if possible and increase timeouts for cloud environments
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 30000
         });
 
         // Verify transporter configuration

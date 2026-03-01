@@ -2,6 +2,12 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Force IPv4 as default to avoid ENETUNREACH errors on cloud platforms like Render
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
