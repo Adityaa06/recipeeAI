@@ -30,6 +30,7 @@ export const sendOTP = async (req, res) => {
 
         // Verify reCAPTCHA
         if (!captchaToken) {
+            console.warn(`[OTP] Missing captcha token for email: ${email}`);
             return res.status(400).json({
                 success: false,
                 message: 'Please verify that you are not a robot.'
@@ -37,15 +38,21 @@ export const sendOTP = async (req, res) => {
         }
 
         const recaptchaSecret = process.env.RECAPTCHA_SECRET;
+        console.log(`[OTP] Verifying reCAPTCHA for ${email}...`);
+
         const [recaptchaRes, existingUser] = await Promise.all([
             axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`, {}, { timeout: 10000 }),
             User.findOne({ email })
         ]);
 
+        console.log(`[OTP] reCAPTCHA result for ${email}:`, recaptchaRes.data);
+
         if (!recaptchaRes.data.success) {
+            console.error(`[OTP] reCAPTCHA verification failed for ${email}:`, recaptchaRes.data['error-codes']);
             return res.status(400).json({
                 success: false,
-                message: 'reCAPTCHA verification failed. Please try again.'
+                message: 'reCAPTCHA verification failed. Please try again.',
+                errors: recaptchaRes.data['error-codes']
             });
         }
 
@@ -58,6 +65,8 @@ export const sendOTP = async (req, res) => {
 
         const otp = generateOTP();
         const otpHash = await hashOTP(otp);
+
+        console.log(`[OTP] Generated new OTP for ${email}. Storing in DB and sending email...`);
 
         // Save OTP to database and Send email in parallel
         // We MUST await both to ensure delivery on serverless platforms
@@ -73,12 +82,18 @@ export const sendOTP = async (req, res) => {
             sendOTPEmail(email, otp)
         ]);
 
+        console.log(`[OTP] OTP flow completed successfully for ${email}`);
         res.status(200).json({
             success: true,
             message: 'OTP sent successfully'
         });
     } catch (error) {
-        console.error('Send OTP error:', error);
+        console.error('--- SEND OTP ERROR ---');
+        console.error('Email:', req.body.email);
+        console.error('Message:', error.message);
+        if (error.stack) console.error(error.stack);
+        console.error('----------------------');
+
         res.status(500).json({
             success: false,
             message: 'Error sending verification code',

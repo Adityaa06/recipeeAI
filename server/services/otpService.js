@@ -18,6 +18,10 @@ let transporter;
  */
 const getTransporter = () => {
     if (!transporter) {
+        console.log('--- Initializing Email Transporter ---');
+        console.log('EMAIL_USER:', process.env.EMAIL_USER);
+        console.log('EMAIL_FROM:', process.env.EMAIL_FROM || process.env.EMAIL_USER);
+
         transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
             port: 465,
@@ -31,6 +35,18 @@ const getTransporter = () => {
             greetingTimeout: 10000,
             socketTimeout: 15000
         });
+
+        // Verify transporter configuration
+        transporter.verify((error, success) => {
+            if (error) {
+                console.error('--- SMTP TRANSPORTER ERROR ---');
+                console.error('Error Code:', error.code);
+                console.error('Error Message:', error.message);
+                console.error('------------------------------');
+            } else {
+                console.log('--- SMTP Transporter Verified Successfully ---');
+            }
+        });
     }
     return transporter;
 };
@@ -41,17 +57,14 @@ const getTransporter = () => {
 export const sendOTPEmail = async (email, otp) => {
     const mailTransporter = getTransporter();
 
-    // For development, if no SMTP credentials, we can use ethereal email
-    // Or just log it to console for now if you prefer. 
-    // I'll set up a transporter that can be configured via env.
-
+    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
     const mailOptions = {
-        from: `"RecipeAI" <${process.env.EMAIL_USER}>`,
+        from: `"RecipeAI" <${fromEmail}>`,
         to: email,
         subject: 'Verify your RecipeAI account',
         text: `Your verification code is ${otp}. It expires in 5 minutes.`,
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; rounded-lg">
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 8px;">
                 <h2 style="color: #10b981; text-align: center;">RecipeAI Verification</h2>
                 <p>Hello,</p>
                 <p>Thank you for signing up for RecipeAI. Please use the following code to verify your email address:</p>
@@ -62,7 +75,7 @@ export const sendOTPEmail = async (email, otp) => {
                 <p>If you didn't request this code, please ignore this email.</p>
                 <hr style="border: 0; border-top: 1px solid #e1e1e1; margin: 20px 0;" />
                 <p style="font-size: 12px; color: #6b7280; text-align: center;">
-                    &copy; 2024 RecipeAI. All rights reserved.
+                    &copy; ${new Date().getFullYear()} RecipeAI. All rights reserved.
                 </p>
             </div>
         `
@@ -70,6 +83,7 @@ export const sendOTPEmail = async (email, otp) => {
 
     // If no credentials, log to console and return success for dev
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.warn('!!! WARNING: EMAIL_USER or EMAIL_PASS not set. Email will NOT be sent. !!!');
         console.log('--- EMAIL DEV MODE ---');
         console.log(`To: ${email}`);
         console.log(`OTP: ${otp}`);
@@ -78,7 +92,7 @@ export const sendOTPEmail = async (email, otp) => {
     }
 
     try {
-        console.log(`Attempting to send email to ${email}...`);
+        console.log(`[EMAIL] Attempting to send OTP to ${email}...`);
 
         // Use a timeout promise to ensure we don't hang the whole server
         const timeoutPromise = new Promise((_, reject) =>
@@ -90,11 +104,14 @@ export const sendOTPEmail = async (email, otp) => {
             timeoutPromise
         ]);
 
-        console.log('Email sent successfully:', result.messageId);
+        console.log(`[EMAIL] OTP sent successfully to ${email}. MessageId: ${result.messageId}`);
         return true;
     } catch (error) {
-        console.error('CRITICAL EMAIL ERROR:', error.message);
+        console.error('--- CRITICAL SMTP SEND ERROR ---');
+        console.error('Recipient:', email);
+        console.error('Error:', error.message);
         if (error.stack) console.error(error.stack);
+        console.error('--------------------------------');
         // We throw a standardized error but we caught it already
         throw new Error(`SMTP Error: ${error.message}`);
     }

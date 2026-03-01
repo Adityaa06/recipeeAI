@@ -18,7 +18,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables robustly
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config(); // Load .env file if it exists (local dev)
+
+console.log('--- Environment Configuration ---');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('CLIENT_URL:', process.env.CLIENT_URL);
+console.log('MONGO_URI:', process.env.MONGO_URI ? 'Defined' : 'MISSING');
+console.log('---------------------------------');
 
 console.log('Starting Server Initialization...');
 
@@ -47,15 +54,22 @@ app.use('/api', limiter);
 // Middleware
 const corsOptions = {
     origin: function (origin, callback) {
-        // In production, allow CLIENT_URL. In development, allow localhost.
-        const allowedOrigins = process.env.NODE_ENV === 'production'
-            ? [process.env.CLIENT_URL]
-            : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+        // In production, allow CLIENT_URL and the specific Vercel domain.
+        const allowedOrigins = [
+            'https://recipee-ai.vercel.app',
+            'https://recipeeai.vercel.app', // Adding a common variant just in case
+            process.env.CLIENT_URL
+        ].filter(Boolean); // Filter out undefined values
+
+        if (process.env.NODE_ENV !== 'production') {
+            allowedOrigins.push('http://localhost:5173', 'http://127.0.0.1:5173');
+        }
 
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
+            console.error(`CORS Error: Origin ${origin} not allowed. Allowed: ${allowedOrigins.join(', ')}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
