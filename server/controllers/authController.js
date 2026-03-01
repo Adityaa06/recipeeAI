@@ -130,19 +130,39 @@ export const testSMTP = async (req, res) => {
         const smtpResult = await verifySMTP();
         const brevoReady = !!(process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS);
 
+        // Actually test Brevo SMTP connection + auth
+        let brevoTest = { success: false, message: 'Not configured' };
+        if (brevoReady) {
+            try {
+                const nodemailer = await import('nodemailer');
+                const brevoTransporter = nodemailer.default.createTransport({
+                    host: 'smtp-relay.brevo.com',
+                    port: 2525,
+                    secure: false,
+                    auth: {
+                        user: process.env.BREVO_SMTP_USER,
+                        pass: process.env.BREVO_SMTP_PASS
+                    },
+                    family: 4,
+                    connectionTimeout: 10000,
+                    greetingTimeout: 10000
+                });
+                await brevoTransporter.verify();
+                brevoTest = { success: true, message: 'Brevo SMTP connected and authenticated!' };
+            } catch (brevoErr) {
+                brevoTest = { success: false, message: brevoErr.message, code: brevoErr.code };
+            }
+        }
+
         return res.status(200).json({
-            success: brevoReady || smtpResult.success,
-            message: (brevoReady ? 'Brevo SMTP Ready! 📧 (Port 2525, any recipient)' : (smtpResult.success ? 'SMTP Connected! ✅' : 'All Delivery Methods Failed ❌')),
+            success: brevoTest.success || smtpResult.success,
+            message: (brevoTest.success ? 'Brevo SMTP Verified! 📧' : (smtpResult.success ? 'SMTP Connected! ✅' : 'All Delivery Methods Failed ❌')),
             diagnostics: {
                 google443,
                 gmail465,
                 gmail587,
                 brevo2525,
-                brevo: {
-                    ready: brevoReady,
-                    user_set: !!process.env.BREVO_SMTP_USER,
-                    pass_set: !!process.env.BREVO_SMTP_PASS
-                },
+                brevo: brevoTest,
                 smtp: {
                     success: smtpResult.success,
                     error: smtpResult.message,
