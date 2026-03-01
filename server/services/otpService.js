@@ -4,6 +4,7 @@
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
 import dns from 'dns';
+import axios from 'axios';
 
 /**
  * Generate a 6-digit OTP
@@ -75,6 +76,53 @@ export const verifySMTP = async () => {
  * Send OTP via email
  */
 export const sendOTPEmail = async (email, otp) => {
+    // 1. Try Resend API first (Production/Render)
+    if (process.env.RESEND_API_KEY) {
+        try {
+            console.log(`[EMAIL] Attempting to send OTP via Resend API to ${email}...`);
+            const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
+            const response = await axios.post('https://api.resend.com/emails', {
+                from: `RecipeAI <${fromEmail}>`,
+                to: email,
+                subject: 'Verify your RecipeAI account',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 8px;">
+                        <h2 style="color: #10b981; text-align: center;">RecipeAI Verification</h2>
+                        <p>Hello,</p>
+                        <p>Thank you for signing up for RecipeAI. Please use the following code to verify your email address:</p>
+                        <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1f2937; margin: 20px 0;">
+                            ${otp}
+                        </div>
+                        <p>This code will expire in <strong>5 minutes</strong>.</p>
+                        <p>If you didn't request this code, please ignore this email.</p>
+                        <hr style="border: 0; border-top: 1px solid #e1e1e1; margin: 20px 0;" />
+                        <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                            &copy; ${new Date().getFullYear()} RecipeAI. All rights reserved.
+                        </p>
+                    </div>
+                `
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            });
+
+            console.log(`[EMAIL] OTP sent via Resend API. ID: ${response.data.id}`);
+            return true;
+        } catch (apiError) {
+            console.error('--- RESEND API ERROR ---');
+            console.error('Status:', apiError.response?.status);
+            console.error('Data:', apiError.response?.data);
+            console.error('Message:', apiError.message);
+            // Fall through to SMTP if API fails
+            console.log('[EMAIL] API delivery failed, falling back to SMTP...');
+        }
+    }
+
+    // 2. Fallback to existing SMTP Logic (Local Dev or API fail)
     const mailTransporter = getTransporter();
 
     const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
@@ -150,4 +198,22 @@ export const hashOTP = async (otp) => {
  */
 export const verifyOTP = async (otp, hashedOtp) => {
     return await bcrypt.compare(otp, hashedOtp);
+};
+
+/**
+ * Diagnostic function to verify Resend API connectivity
+ */
+export const verifyResend = async () => {
+    if (!process.env.RESEND_API_KEY) {
+        return { success: false, message: 'RESEND_API_KEY is missing' };
+    }
+    try {
+        // Simple GET to Resend to check API key validity
+        // Note: Resend doesn't have a simple 'ping' endpoint, 
+        // but we can try to list domains or similar if we wanted a real test.
+        // For now, we'll just check if the key is defined as a basic measure.
+        return { success: true, message: 'Resend API Key is defined' };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
 };

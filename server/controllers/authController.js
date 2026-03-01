@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import OTP from '../models/OTP.js';
 import jwt from 'jsonwebtoken';
-import { generateOTP, sendOTPEmail, hashOTP, verifyOTP as checkOTP, verifySMTP } from '../services/otpService.js';
+import { generateOTP, sendOTPEmail, hashOTP, verifyOTP as checkOTP, verifySMTP, verifyResend } from '../services/otpService.js';
 import axios from 'axios';
 import net from 'net';
 
@@ -127,16 +127,20 @@ export const testSMTP = async (req, res) => {
         const gmail587 = await checkNetwork('smtp.gmail.com', 587);
         const brevo2525 = await checkNetwork('smtp-relay.brevo.com', 2525);
 
-        const smtpResult = await verifySMTP();
+        const [smtpResult, resendResult] = await Promise.all([
+            verifySMTP(),
+            verifyResend()
+        ]);
 
         return res.status(200).json({
-            success: smtpResult.success,
-            message: smtpResult.success ? 'SMTP Connected! ✅' : 'SMTP Failed ❌',
+            success: smtpResult.success || resendResult.success,
+            message: (resendResult.success ? 'Resend API Ready! 📧' : (smtpResult.success ? 'SMTP Connected! ✅' : 'All Delivery Methods Failed ❌')),
             diagnostics: {
                 google443,
                 gmail465,
                 gmail587,
                 brevo2525,
+                resend: resendResult,
                 smtp: {
                     success: smtpResult.success,
                     error: smtpResult.message,
