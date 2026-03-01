@@ -28,30 +28,31 @@ const getTransporter = () => {
             console.error('CRITICAL: EMAIL_USER or EMAIL_PASS environment variables are MISSING!');
         }
 
+        // We use a well-known IPv4 for smtp.gmail.com to bypass IPv6/DNS issues on Render
+        // 142.251.18.108 is a stable Google SMTP IPv4
+        const smtpHost = '142.251.18.108';
+
         transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
+            host: smtpHost,
             port: 465,
-            secure: true, // Port 465 uses SSL/TLS from the start
+            secure: true,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Force IPv4 via custom lookup to strictly bypass IPv6 ENETUNREACH on Render
-            lookup: (hostname, options, callback) => {
-                dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-                    if (err) {
-                        console.error(`[DNS] Lookup failed for ${hostname}:`, err.message);
-                    } else {
-                        console.log(`[DNS] Resolved ${hostname} to ${address} (IPv${family})`);
-                    }
-                    callback(err, address, family);
-                });
-            },
+            // Strictly enforce IPv4 at the socket level
+            family: 4,
             connectionTimeout: 20000,
             greetingTimeout: 20000,
             socketTimeout: 30000,
-            debug: true, // Enable debug logs
-            logger: true // Log to console
+            debug: true,
+            logger: true,
+            tls: {
+                // Important: When using IP address instead of hostname, 
+                // we must specify the servername for SNI and certificate verification.
+                servername: 'smtp.gmail.com',
+                rejectUnauthorized: true
+            }
         });
 
         // Verify transporter configuration
