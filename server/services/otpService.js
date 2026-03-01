@@ -3,6 +3,7 @@
 
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
+import dns from 'dns';
 
 /**
  * Generate a 6-digit OTP
@@ -30,8 +31,10 @@ const getTransporter = () => {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            // Force node to use IPv4 if possible and increase timeouts for cloud environments
-            family: 4, // Force IPv4
+            // Force IPv4 via custom lookup to bypass IPv6 ENETUNREACH on cloud providers
+            lookup: (hostname, options, callback) => {
+                dns.lookup(hostname, { family: 4 }, callback);
+            },
             connectionTimeout: 20000,
             greetingTimeout: 20000,
             socketTimeout: 30000
